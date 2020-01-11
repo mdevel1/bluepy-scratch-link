@@ -246,7 +246,7 @@ class BLESession(Session):
 
         if self.status == self.INITIAL and method == 'discover':
             scanner = Scanner()
-            devices = scanner.scan(1.0)
+            devices = scanner.scan(5.0)
             for dev in devices:
                 logger.debug(f"found device: {dev.getScanData()}")
                 if self.matches(dev, params['filters']):
