@@ -248,6 +248,7 @@ class BLESession(Session):
             scanner = Scanner()
             devices = scanner.scan(1.0)
             for dev in devices:
+                logger.debug(f"found device: {dev.getScanData()}")
                 if self.matches(dev, params['filters']):
                     self.found_devices.append(dev)
             if len(self.found_devices) == 0:
