@@ -19,8 +19,8 @@ import time
 import logging
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-logger.setLevel(logging.INFO)
+handler.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 logger.addHandler(handler)
 logger.propagate = False
 
