@@ -297,7 +297,14 @@ class BLESession(Session):
                 self.lock.release()
                 message = base64.standard_b64encode(b).decode('ascii')
                 res['result'] = { 'message': message, 'encode': 'base64' }
-            if params['startNotifications'] == True:
+
+            try:
+                startNotifications = params['startNotifications']
+            except KeyError:
+                logger.debug('No startNotifications param in request, defaulting to False')
+                startNotifications = False
+
+            if startNotifications == True:
                 logger.debug(f"start notification for {chara_id}")
                 service = self.perip.getServiceByUUID(UUID(service_id))
                 chas = service.getCharacteristics(forUUID=chara_id)
