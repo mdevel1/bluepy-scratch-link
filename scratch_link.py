@@ -264,8 +264,9 @@ class BLESession(Session):
             logger.debug("connecting to the BLE device")
             self.device = self.found_devices[params['peripheralId']]
             try:
-                self.perip = Peripheral(self.device.addr,
-                                        self.device.addrType)
+                with self.lock:
+                    self.perip = Peripheral(self.device.addr,
+                                            self.device.addrType)
                 logger.info(f"connect to BLE peripheral: {self.perip}")
             except BTLEDisconnectError as e:
                 logger.error(f"failed to connect to BLE device: {e}")
@@ -285,7 +286,8 @@ class BLESession(Session):
             logger.debug("handle read request")
             service_id = params['serviceId']
             chara_id = params['characteristicId']
-            charas = self.perip.getCharacteristics(uuid=chara_id)
+            with self.lock:
+                charas = self.perip.getCharacteristics(uuid=chara_id)
             c = charas[0]
             if c.uuid != UUID(chara_id):
                 logger.error("Failed to get characteristic {chara_id}")
@@ -309,21 +311,24 @@ class BLESession(Session):
             logger.debug("handle startNotifications request")
             service_id = params['serviceId']
             chara_id = params['characteristicId']
-            charas = self.perip.getCharacteristics(uuid=chara_id)
+            with self.lock:
+                charas = self.perip.getCharacteristics(uuid=chara_id)
             self.startNotifications(service_id=service_id, chara_id=chara_id)
 
         elif self.status == self.CONNECTED and method == 'stopNotifications':
             logger.debug("handle stopNotifications request")
             service_id = params['serviceId']
             chara_id = params['characteristicId']
-            charas = self.perip.getCharacteristics(uuid=chara_id)
+            with self.lock:
+                charas = self.perip.getCharacteristics(uuid=chara_id)
             self.stopNotifications(service_id=service_id, chara_id=chara_id)
 
         elif self.status == self.CONNECTED and method == 'write':
             logger.debug("handle write request")
             service_id = params['serviceId']
             chara_id = params['characteristicId']
-            charas = self.perip.getCharacteristics(uuid=chara_id)
+            with self.lock:
+                charas = self.perip.getCharacteristics(uuid=chara_id)
             c = charas[0]
             if c.uuid != UUID(chara_id):
                 logger.error("Failed to get characteristic {chara_id}")
@@ -342,8 +347,9 @@ class BLESession(Session):
         return res
 
     def setNotifications(self, service_id, chara_id, value):
-        service = self.perip.getServiceByUUID(UUID(service_id))
-        chas = service.getCharacteristics(forUUID=chara_id)
+        with self.lock:
+            service = self.perip.getServiceByUUID(UUID(service_id))
+            chas = service.getCharacteristics(forUUID=chara_id)
         handle = chas[0].getHandle()
         # prepare notification handler
         self.delegate.add_handle(service_id, chara_id, handle)
