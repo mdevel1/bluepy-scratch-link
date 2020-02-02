@@ -141,9 +141,8 @@ class BLESession(Session):
                         if not delegate.restart_notification_event.is_set():
                             delegate.restart_notification_event.wait()
                         try:
-                            self.session.lock.acquire()
-                            self.session.perip.waitForNotifications(1.0)
-                            self.session.lock.release()
+                            with self.session.lock:
+                                self.session.perip.waitForNotifications(1.0)
                         except Exception as e:
                             logger.error(e)
                             self.session.close()
@@ -292,9 +291,8 @@ class BLESession(Session):
                 logger.error("Failed to get characteristic {chara_id}")
                 self.status = self.DONE
             else:
-                self.lock.acquire()
-                b = c.read()
-                self.lock.release()
+                with self.lock:
+                    b = c.read()
                 message = base64.standard_b64encode(b).decode('ascii')
                 res['result'] = { 'message': message, 'encode': 'base64' }
 
@@ -336,9 +334,8 @@ class BLESession(Session):
                                  "yet supported: ", params['encoding'])
                 msg_bstr = params['message'].encode('ascii')
                 data = base64.standard_b64decode(msg_bstr)
-                self.lock.acquire()
-                c.write(data)
-                self.lock.release()
+                with self.lock:
+                    c.write(data)
                 res['result'] = len(data)
 
         logger.debug(res)
@@ -351,10 +348,9 @@ class BLESession(Session):
         # prepare notification handler
         self.delegate.add_handle(service_id, chara_id, handle)
         # request notification to the BLE device
-        self.lock.acquire()
-        self.perip.writeCharacteristic(chas[0].getHandle() + 1,
-                                       b"\x01\x00", True)
-        self.lock.release()
+        with self.lock:
+            self.perip.writeCharacteristic(chas[0].getHandle() + 1,
+                                           b"\x01\x00", True)
 
     def startNotifications(self, service_id, chara_id):
         logger.debug(f"start notification for {chara_id}")
