@@ -76,18 +76,22 @@ class Session():
         self.flush_notification_queue()
 
     def flush_notification_queue(self):
+        merged_notifications = []
         while not self.notification_queue.empty():
             method, params = self.notification_queue.get()
-            self._send_notification(method, params)
+            merged_notifications.append(self._create_notification_message(method, params))
+        self._send_notification('\n'.join(merged_notifications))
 
-    def _send_notification(self, method, params):
+    def _create_notification_message(self, method, params):
         jsonn = { 'jsonrpc': "2.0", 'method': method }
         jsonn['params'] = params
         notification = json.dumps(jsonn)
         logger.debug(f"notification: {notification}")
+        return notification
 
+    def _send_notification(self, merged_notifications):
         future = asyncio.run_coroutine_threadsafe(
-            self.websocket.send(notification), self.loop)
+            self.websocket.send(merged_notifications), self.loop)
         result = future.result()
 
     async def handle(self):
