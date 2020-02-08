@@ -14,6 +14,7 @@ from bluepy.btle import Scanner, UUID, Peripheral, DefaultDelegate
 from bluepy.btle import BTLEDisconnectError
 import threading
 import time
+import queue
 
 # for logging
 import logging
@@ -30,7 +31,7 @@ class Session():
         self.websocket = websocket
         self.loop = loop
         self.lock = threading.RLock()
-        self.notification = None
+        self.notification_queue = queue.Queue()
 
     async def recv_request(self):
         """
@@ -67,12 +68,19 @@ class Session():
         logger.debug("default end_request")
         return False
 
-    def notify(self, method, params):
+    def notify(self):
         """
         Notify BT/BLE device events to scratch.
         """
         logger.debug("start to notify")
+        self.flush_notification_queue()
 
+    def flush_notification_queue(self):
+        while not self.notification_queue.empty():
+            method, params = self.notification_queue.get()
+            self._send_notification(method, params)
+
+    def _send_notification(self, method, params):
         jsonn = { 'jsonrpc': "2.0", 'method': method }
         jsonn['params'] = params
         notification = json.dumps(jsonn)
@@ -132,7 +140,8 @@ class BLESession(Session):
                         params = { 'rssi': d.rssi }
                         params['peripheralId'] = devices.index(d)
                         params['name'] = d.getValueText(0x9)
-                        self.session.notify('didDiscoverPeripheral', params)
+                        self.session.notification_queue.put(('didDiscoverPeripheral', params))
+                        self.session.notify()
                     time.sleep(1)
                 elif self.session.status == self.session.CONNECTED:
                     logger.debug("in connected status:")
@@ -176,11 +185,12 @@ class BLESession(Session):
 
         def handleNotification(self, handle, data):
             logger.debug(f"BLE notification: {handle} {data}")
+            params = self.handles[handle].copy()
+            params['message'] = base64.standard_b64encode(data).decode('ascii')
+            self.session.notification_queue.put(('characteristicDidChange', params))
             if not self.restart_notification_event.is_set():
                 return
-            params = self.handles[handle]
-            params['message'] = base64.standard_b64encode(data).decode('ascii')
-            self.session.notify('characteristicDidChange', params)
+            self.session.notify()
 
     def __init__(self, websocket, loop):
         super().__init__(websocket, loop)
